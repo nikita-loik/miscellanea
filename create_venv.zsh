@@ -8,7 +8,7 @@ venv_stem="${dir_name//-/_}"
 venv_name="venv_${venv_stem}"
 echo "===creating virtual environment ${venv_name}==="
 # B. Create virtual environment.
-virtualenv -p python3 "$venv_name"
+virtualenv -p python3 ".${venv_name}"
 # C. Activate virtual environment.
 source ".${venv_name}/bin/activate"
 # D. Install jupyter.
