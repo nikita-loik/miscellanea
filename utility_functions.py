@@ -14,9 +14,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-population_size = 50
-g_ratio = 0.5
-max_partners = 5
 
 def simulate_population(
         population_size: int = 50,
