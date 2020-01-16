@@ -33,9 +33,9 @@ def simulate_population(
             boys.append(len(boys))
         else:
             girls.append(len(girls))
-    print(
-        f"boys # {len(boys)}\n"
-        f"girls # {len(girls)}")
+    logger.info(
+        f"\tboys # {len(boys)}\n"
+        f"\tgirls # {len(girls)}")
 
 
     # Convert population into a bipartite graph.
@@ -51,20 +51,23 @@ def simulate_population(
     boys = [i for i, d in g.nodes(data=True) if d['bipartite']==0]
     girls = [j for j, d in g.nodes(data=True) if d['bipartite']==1]
     for i in boys:
-        partners_n = np.random.randint(max_partners)
+        n_partners = np.random.randint(max_partners)
         partners = np.random.choice(
             girls,
-            partners_n,
+            n_partners,
             replace=False)
         for j in partners:
             g.add_edge(i, j)
 
     average_n_partners_boys =  g.number_of_edges() / len(boys)
     average_n_partners_girls = g.number_of_edges() / len(girls)
+    boys_to_girls_ratio = len(boys) / len(girls)
 
-    print(
-        f"average # partners per boy: {average_n_partners_boys:.2f}\n"
-        f"average # partners per girl: {average_n_partners_girls:.2f}")
+    logger.info(
+        f"\taverage # partners per boy: {average_n_partners_boys:.2f}\n"
+        f"\taverage # partners per girl: {average_n_partners_girls:.2f}\n"
+        f"\tboys to girls ratio: {boys_to_girls_ratio:.2f}")
+
     return g
 
 
