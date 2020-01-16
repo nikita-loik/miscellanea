@@ -16,11 +16,10 @@ import re
 import requests
 from bs4 import BeautifulSoup
 import selenium
-from selenium import webbrowser
-from selenium.webbrowser.chrome.options import Options
-from selenium.webbrowser.common.by import By
-from selenium.webbrowser.support.ui import WebbrowserWait
-from selenium.webbrowser.support import expected_conditions as EC
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import StaleElementReferenceException
@@ -47,18 +46,18 @@ logger = logging.getLogger(__name__)
 
 
 # UTILITY FUNCTIONS ============================================================
-def get_web_browser(
+def get_web_driver(
         ):
-    chrome_options = webbrowser.ChromeOptions()
+    chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
     # chrome_options.add_argument('--headless')
     chrome_options.add_argument("--window-size=1920x1080")
-    chrome_browser_path = '/Users/nikita/Documents/selenium/chromebrowser'
-    browser = webbrowser.Chrome(
+    chrome_driver_path = '../web_drivers/chromedriver'
+    driver = webdriver.Chrome(
         options=chrome_options,
-        executable_path=chrome_browser_path)
-    browser.implicitly_wait(10)
-    return browser
+        executable_path=chrome_driver_path)
+    driver.implicitly_wait(10)
+    return driver
 
 
 # SCRAPE GLASSDOOR ============================================================
