@@ -46,18 +46,154 @@ logger = logging.getLogger(__name__)
 
 
 # UTILITY FUNCTIONS ============================================================
-def get_web_driver(
+def get_web_browser(
         ):
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
     # chrome_options.add_argument('--headless')
     chrome_options.add_argument("--window-size=1920x1080")
-    chrome_driver_path = '../web_drivers/chromedriver'
-    driver = webdriver.Chrome(
+    chrome_driver_path = '../webdrivers/chromedriver'
+    browser = webdriver.Chrome(
         options=chrome_options,
         executable_path=chrome_driver_path)
-    driver.implicitly_wait(10)
-    return driver
+    browser.implicitly_wait(10)
+    return browser
 
 
 # SCRAPE GLASSDOOR ============================================================
+def load_main_page(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        url: str = 'https://www.glassdoor.co.uk',
+        ):
+
+    print(url)
+    browser.get(url)
+    browser.implicitly_wait(10)
+
+
+def accept_cookies(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver
+        ):
+    # Click 'Accept'.
+    element = browser.find_element_by_xpath(
+        f"//div[@id='_evidon_banner']"
+        f"//button[@id='_evidon-accept-button']"
+        )
+    element.click()
+    browser.implicitly_wait(10)
+
+
+def sign_in(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        e_mail: str,
+        password: str,
+        ):
+
+    # Click 'Sign In'.
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@class='locked-home-sign-in']"
+        f"//a[@class='track-click gd-btn-locked-transparent susiLink sign-in strong nowrap']"
+        )
+    element.click()
+    browser.implicitly_wait(5)
+
+    # Enter e-mail.
+    element = browser.find_element_by_xpath(
+        f"//div[@class='modal_content']"
+        f"//input[@id='userEmail']"
+        )
+    element.click()
+    element.send_keys(e_mail)
+    browser.implicitly_wait(5)
+
+    # Enter password.
+    element = browser.find_element_by_xpath(
+        f"//div[@class='modal_content']"
+        f"//input[@id='userPassword']"
+        )
+    element.click()
+    element.send_keys(password)
+    browser.implicitly_wait(5)
+    element.send_keys(u'\ue007')  # click 'Enter'
+
+
+def do_search(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        keywords: str,
+        location: str,
+        ):
+    # Enter 'Job Title, Keywords or Company'.
+    element = browser.find_element_by_xpath(
+        f"//div[@class='search-bar ']"
+        f"//input[@class='keyword']"
+        )
+    element.clear()
+    element.click()
+    browser.implicitly_wait(5)
+
+    element.send_keys(keywords)
+
+    # Enter 'Location'.
+    element = browser.find_element_by_xpath(
+        f"//div[@class='search-bar ']"
+        f"//input[@class='loc']"
+        )
+    element.clear()
+    element.click()
+    browser.implicitly_wait(5)
+    element.send_keys(location)
+
+    # Click 'Search'.
+    element = browser.find_element_by_xpath(
+        f"//div[@class='search-bar ']"
+        f"//button[@class='gd-btn-mkt']"
+        )
+    element.click()
+
+
+def set_filters(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        jobtype: str,
+        post_age: str,
+        radius: str,
+        ):
+
+    element = browser.find_element_by_xpath(
+        f"//div[@class='selectDynamicFilters']"
+        f"//div[@data-test='JOBTYPE'][@id='filter_jobType']"
+        )
+    element.click()
+    browser.implicitly_wait(5)
+    element = browser.find_element_by_xpath(
+        f"//div[@id='JobSearch']"
+        f"//div[@id='PrimaryDropdown']"
+        f"//li[@value='{jobtype}']"
+        )
+    element.click()
+
+    element = browser.find_element_by_xpath(
+        f"//div[@class='selectDynamicFilters']"
+        f"//div[@data-test='DATEPOSTED'][@id='filter_fromAge']"
+        )
+    element.click()
+    browser.implicitly_wait(5)
+    element = browser.find_element_by_xpath(
+        f"//div[@id='JobSearch']"
+        f"//div[@id='PrimaryDropdown']"
+        f"//li[@value='{post_age}']"
+        )
+    element.click()
+
+    element = browser.find_element_by_xpath(
+        f"//div[@class='selectDynamicFilters']"
+        f"//div[@data-test='DISTANCE'][@id='filter_radius']"
+        )
+    element.click()
+    browser.implicitly_wait(5)
+    element = browser.find_element_by_xpath(
+        f"//div[@id='JobSearch']"
+        f"//div[@id='PrimaryDropdown']"
+        f"//li[@value='{radius}']"
+        )
+    element.click()
