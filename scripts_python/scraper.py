@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # UTILITY FUNCTIONS ============================================================
 def get_web_browser(
-        ):
+        ) -> selenium.webdriver.chrome.webdriver.WebDriver:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
     # chrome_options.add_argument('--headless')
@@ -197,3 +197,94 @@ def set_filters(
         f"//li[@value='{radius}']"
         )
     element.click()
+
+
+def switch_to_next_page(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        ):
+
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@id='ResultsFooter']"
+        f"//li[@class='next']"
+        )
+    element.click()
+    browser.implicitly_wait(5)
+
+
+def get_company_name_and_rating(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        ) -> tuple:
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@id='JobResults']"
+        f"//div[@class='employerName']"
+        )
+    name, rating = element.text.split('\n')
+    rating = float(rating)
+    return name, rating
+
+
+def get_job_title_and_description(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        ) -> tuple:
+    
+    # Get job title.
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@id='JobResults']"
+        f"//div[@class='title']"
+        )
+    job_title = element.text
+
+    # Get job description.
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@id='Details']"
+        f"//div[@class='jobDescriptionContent desc']"
+        )
+    job_description = element.text
+
+    return job_title, job_description
+
+def get_company_size_and_url(
+        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        ) -> tuple:
+
+    # Switch to company data.
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@id='JDCol']"
+        f"//div[@class='scrollableTabs']"
+        f"//div[@data-tab-type='overview']"
+        )
+    element.click()
+    browser.implicitly_wait(5)
+
+    # Get company size.
+    element = browser.find_element_by_xpath(
+        f"//div[@id='PageContent']"
+        f"//div[@id='JDCol']"
+        f"//div[@id='EmpBasicInfo']"
+        f"//div[@class='infoEntity'][label='Size']"
+        f"//span[@class='value']"
+        )
+    size = element.text
+    browser.implicitly_wait(5)
+
+    # Get company url.
+    try:
+        element = browser.find_element_by_xpath(
+            f"//div[@id='PageContent']"
+            f"//div[@id='JDCol']"
+            f"//div[@class='noMarg padTopSm padBot']"
+            f"//span[@class='value website']"
+            f"//a[@class='link']"
+            )
+        url = element.get_attribute('href')
+    except NoSuchElementException:
+        url = 'NA'
+        pass
+    browser.implicitly_wait(5)
+
+    return size, url
