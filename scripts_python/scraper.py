@@ -12,6 +12,7 @@ import time
 import datetime
 
 import re
+import hashlib
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,6 +25,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
 
 working_dir = os.path.dirname(
     os.path.abspath(
@@ -33,6 +35,8 @@ sys.path.insert(0, parent_dir)
 
 from scripts_python import scraper as scr
 
+
+WAIT_TIME = 10
 
 
 # https://github.com/MatthewChatham/glassdoor-review-scraper
@@ -46,245 +50,304 @@ logger = logging.getLogger(__name__)
 
 
 # UTILITY FUNCTIONS ============================================================
-def get_web_browser(
+def get_web_driver(
         ) -> selenium.webdriver.chrome.webdriver.WebDriver:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
     # chrome_options.add_argument('--headless')
     chrome_options.add_argument("--window-size=1920x1080")
     chrome_driver_path = '../webdrivers/chromedriver'
-    browser = webdriver.Chrome(
+    driver = webdriver.Chrome(
         options=chrome_options,
         executable_path=chrome_driver_path)
-    browser.implicitly_wait(10)
-    return browser
+    driver.implicitly_wait(WAIT_TIME)
+    return driver
+
+
+def get_clickable_element(
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
+        xpath: str):
+    element = WebDriverWait(
+        driver, WAIT_TIME).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, xpath)))
+    return element
+
+
+def get_element_when_present(
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
+        xpath: str):
+    try:
+        element = WebDriverWait(
+            driver, WAIT_TIME).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, xpath)))
+    except TimeoutException:
+        element = None
+    return element
+
+
+def get_element_text_when_present(
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
+        xpath: str):
+    element = get_element_when_present(driver=driver, xpath=xpath)
+    if element is not None:
+        text = element.text
+    else:
+        text = 'NA'
+    return text
 
 
 # SCRAPE GLASSDOOR ============================================================
 def load_main_page(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         url: str = 'https://www.glassdoor.co.uk',
         ):
 
     print(url)
-    browser.get(url)
-    browser.implicitly_wait(10)
+    driver.get(url)
+    driver.implicitly_wait(10)
 
 
 def accept_cookies(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver
+        driver: selenium.webdriver.chrome.webdriver.WebDriver
         ):
     # Click 'Accept'.
-    element = browser.find_element_by_xpath(
+
+    xpath = (
         f"//div[@id='_evidon_banner']"
-        f"//button[@id='_evidon-accept-button']"
-        )
+        f"//button[@id='_evidon-accept-button']")
+    element = get_clickable_element(
+        driver=driver, xpath=xpath)
+
     element.click()
-    browser.implicitly_wait(10)
+    driver.implicitly_wait(10)
 
 
 def sign_in(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         e_mail: str,
         password: str,
         ):
 
     # Click 'Sign In'.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@id='PageContent']"
         f"//div[@class='locked-home-sign-in']"
         f"//a[@class='track-click gd-btn-locked-transparent susiLink sign-in strong nowrap']"
         )
+    element = get_clickable_element(
+        driver=driver, xpath=xpath)
     element.click()
-    browser.implicitly_wait(5)
 
     # Enter e-mail.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@class='modal_content']"
         f"//input[@id='userEmail']"
         )
+    element = get_clickable_element(
+        driver=driver, xpath=xpath)
     element.click()
     element.send_keys(e_mail)
-    browser.implicitly_wait(5)
 
     # Enter password.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@class='modal_content']"
         f"//input[@id='userPassword']"
         )
+    element = get_clickable_element(
+        driver=driver, xpath=xpath)
     element.click()
     element.send_keys(password)
-    browser.implicitly_wait(5)
     element.send_keys(u'\ue007')  # click 'Enter'
 
 
 def do_search(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         keywords: str,
         location: str,
         ):
     # Enter 'Job Title, Keywords or Company'.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@class='search-bar ']"
         f"//input[@class='keyword']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.clear()
     element.click()
-    browser.implicitly_wait(5)
 
     element.send_keys(keywords)
 
     # Enter 'Location'.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@class='search-bar ']"
         f"//input[@class='loc']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.clear()
     element.click()
-    browser.implicitly_wait(5)
+    driver.implicitly_wait(10)
     element.send_keys(location)
 
     # Click 'Search'.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@class='search-bar ']"
         f"//button[@class='gd-btn-mkt']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
 
 
 def set_filters(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         jobtype: str,
         post_age: str,
         radius: str,
         ):
 
-    element = browser.find_element_by_xpath(
+    # Set job type.
+    xpath = (
         f"//div[@class='selectDynamicFilters']"
         f"//div[@data-test='JOBTYPE'][@id='filter_jobType']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
-    browser.implicitly_wait(5)
-    element = browser.find_element_by_xpath(
+
+    xpath = (
         f"//div[@id='JobSearch']"
         f"//div[@id='PrimaryDropdown']"
         f"//li[@value='{jobtype}']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
-
-    element = browser.find_element_by_xpath(
+    
+    # Set date posted.
+    xpath = (
         f"//div[@class='selectDynamicFilters']"
         f"//div[@data-test='DATEPOSTED'][@id='filter_fromAge']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
-    browser.implicitly_wait(5)
-    element = browser.find_element_by_xpath(
+
+    xpath = (
         f"//div[@id='JobSearch']"
         f"//div[@id='PrimaryDropdown']"
         f"//li[@value='{post_age}']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
 
-    element = browser.find_element_by_xpath(
+    # Set distance.
+    xpath = (
         f"//div[@class='selectDynamicFilters']"
         f"//div[@data-test='DISTANCE'][@id='filter_radius']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
-    browser.implicitly_wait(5)
-    element = browser.find_element_by_xpath(
+
+    xpath = (
         f"//div[@id='JobSearch']"
         f"//div[@id='PrimaryDropdown']"
         f"//li[@value='{radius}']"
         )
+    element = get_clickable_element(driver=driver, xpath=xpath)
     element.click()
 
 
 def switch_to_next_page(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         ):
-
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@id='PageContent']"
         f"//div[@id='ResultsFooter']"
         f"//li[@class='next']"
         )
-    element.click()
-    browser.implicitly_wait(5)
+    try:
+        element = get_clickable_element(driver=driver, xpath=xpath)
+        element.click()
+    except:
+        pass
 
 
 def get_company_name_and_rating(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         ) -> tuple:
-    element = browser.find_element_by_xpath(
+    element = driver.find_element_by_xpath(
         f"//div[@id='PageContent']"
         f"//div[@id='JobResults']"
         f"//div[@class='employerName']"
         )
-    name, rating = element.text.split('\n')
-    rating = float(rating)
+    try:
+        name, rating = element.text.split('\n')
+        rating = float(rating)
+    except ValueError:
+        name = element.text.split('\n')[0]
+        rating = 'NA'
     return name, rating
 
 
 def get_job_title_and_description(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         ) -> tuple:
     
     # Get job title.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@id='PageContent']"
         f"//div[@id='JobResults']"
         f"//div[@class='title']"
         )
-    job_title = element.text
+    job_title = get_element_text_when_present(driver=driver, xpath=xpath)
 
     # Get job description.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@id='PageContent']"
         f"//div[@id='Details']"
         f"//div[@class='jobDescriptionContent desc']"
         )
-    job_description = element.text
+    job_description = get_element_text_when_present(driver=driver, xpath=xpath)
 
     return job_title, job_description
 
 def get_company_size_and_url(
-        browser: selenium.webdriver.chrome.webdriver.WebDriver,
+        driver: selenium.webdriver.chrome.webdriver.WebDriver,
         ) -> tuple:
 
     # Switch to company data.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@id='PageContent']"
         f"//div[@id='JDCol']"
         f"//div[@class='scrollableTabs']"
         f"//div[@data-tab-type='overview']"
         )
-    element.click()
-    browser.implicitly_wait(5)
+    try:
+        element = get_clickable_element(driver=driver, xpath=xpath)
+    except:
+        size = 'NA'
+        url = 'NA'
+        return size, url
 
     # Get company size.
-    element = browser.find_element_by_xpath(
+    xpath = (
         f"//div[@id='PageContent']"
         f"//div[@id='JDCol']"
         f"//div[@id='EmpBasicInfo']"
         f"//div[@class='infoEntity'][label='Size']"
         f"//span[@class='value']"
         )
-    size = element.text
-    browser.implicitly_wait(5)
+    size = get_element_text_when_present(driver=driver, xpath=xpath)
 
     # Get company url.
-    try:
-        element = browser.find_element_by_xpath(
-            f"//div[@id='PageContent']"
-            f"//div[@id='JDCol']"
-            f"//div[@class='noMarg padTopSm padBot']"
-            f"//span[@class='value website']"
-            f"//a[@class='link']"
-            )
+    xpath = (
+        f"//div[@id='PageContent']"
+        f"//div[@id='JDCol']"
+        f"//div[@class='noMarg padTopSm padBot']"
+        f"//span[@class='value website']"
+        f"//a[@class='link']"
+        )
+    element = get_element_when_present(driver=driver, xpath=xpath)
+    if element is not None:
         url = element.get_attribute('href')
-    except NoSuchElementException:
+    else:
         url = 'NA'
-        pass
-    browser.implicitly_wait(5)
 
     return size, url
