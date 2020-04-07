@@ -3,3 +3,4 @@
 __pycache__/
 ignorabilia/
 .venv_miscellanea/
+.DS_Store
