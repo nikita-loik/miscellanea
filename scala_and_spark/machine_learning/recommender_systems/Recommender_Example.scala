@@ -6,7 +6,8 @@ val ratings = spark.read.option("header","true").option("inferSchema","true").cs
 ratings.head()
 ratings.printSchema()
 
-val Array(training, test) = ratings.randomSplit(Array(0.8, 0.2))
+val Array(training, test) = ratings
+  .randomSplit(Array(0.8, 0.2))
 
 // Build the recommendation model using ALS on the training data
 val als = new ALS()
